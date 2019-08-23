@@ -3,121 +3,85 @@
 # @Time    : 2019/8/5 下午2:14
 # @Author  : Zessay
 
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, f1_score
+import numpy as np
 
 
-class Metric(object):
-    def __init__(self, pred_y, true_y, labels=None):
-        self.pred_y = pred_y.ravel()
-        self.true_y = true_y.ravel()
-        self.labels = labels
+class Metric:
+    def __init__(self, y_proba, y_true, config):
+        self.y_proba = y_proba
+        self.y_true = y_true.ravel().astype("int")
+        self.config = config
 
-    @classmethod
-    def mean(cls, item: list) -> float:
-        '''
-        定义计算列表元素均值的函数
-        '''
-        res = sum(item) / len(item) if len(item) > 0 else 0
-        return round(res, 5)
+        ## 判断标签
+        if len(np.unique(self.y_true)) == 2:
+            self.y_pred = (self.y_proba.ravel() > config.threshold).astype("int")
+        else:
+            self.y_pred = np.argmax(self.y_proba, axis=1).ravel()
 
     def accuracy(self):
         '''
-        计算二类和多类的准确率
+        计算准确率
         '''
-        p = self.pred_y
-        t = self.true_y
-        if isinstance(p[0], list):
-            p = [item[0] for item in p]
-        corr = 0
-        for i in range(len(p)):
-            if p[i] == t[i]:
-                corr += 1
-        acc = corr / len(p) if len(p) > 0 else 0
+        acc = accuracy_score(self.y_true, self.y_pred)
         return round(acc, 5)
 
-    def binary_precision(self, positive=1):
+    def precision(self):
         '''
-        二类精确率的计算
+        计算精确度
         '''
-        p = self.pred_y
-        t = self.true_y
-        if isinstance(p[0], list):
-            p = [item[0] for item in p]
-        corr = 0
-        pred_corr = 0
-        for i in range(len(p)):
-            if p[i] == positive:
-                pred_corr += 1
-                if p[i] == t[i]:
-                    corr += 1
-        prec = corr / pred_corr if pred_corr > 0 else 0
+        if len(np.unique(self.y_true)) == 2:
+            prec = precision_score(self.y_true, self.y_pred)
+        else:
+            prec = precision_score(self.y_true, self.y_pred, average="micro")
         return round(prec, 5)
 
-    def binary_recall(self, positive=1):
+    def recall(self):
         '''
-        二类召回率的计算
+        计算召回率
         '''
-        p = self.pred_y
-        t = self.true_y
-        if isinstance(p[0], list):
-            p = [item[0] for item in p]
-        corr = 0
-        true_corr = 0
-        for i in range(len(p)):
-            if t[i] == positive:
-                true_corr += 1
-                if p[i] == t[i]:
-                    corr += 1
-        rec = corr / true_corr if true_corr > 0 else 0
+        if len(np.unique(self.y_true)) == 2:
+            rec = recall_score(self.y_true, self.y_pred)
+        else:
+            rec = recall_score(self.y_true, self.y_pred, average="micro")
         return round(rec, 5)
 
-    def binary_f_beta(self, beta=1.0, positive=1):
-        '''
-        二类的f_beta的计算
-        '''
-        precision = self.binary_precision(positive)
-        recall = self.binary_recall(positive)
-        try:
-            f_b = (1 + beta * beta) * precision * recall / (beta * beta * precision + recall)
-        except:
-            f_b = 0
-        return round(f_b, 5)
+    def f_score(self):
+        if len(np.unique(self.y_true)) == 2:
+            f = f1_score(self.y_true, self.y_pred)
+        else:
+            f = f1_score(self.y_true, self.y_pred, average="micro")
+        return round(f, 5)
 
-    def multi_precision(self):
-        '''
-        多类精确率的计算
-        '''
-        precisions = [self.binary_precision(label) for label in self.labels]
-        prec = Metric.mean(precisions)
-        return round(prec, 5)
+    def auc(self):
+        uni = len(np.unique(self.y_true))
+        if uni <= 2:
+            a = roc_auc_score(self.y_true, self.y_proba.ravel())
+        else:
+            y_true = np.eye(np.max(self.y_true) + 1)[self.y_true]
+            a = roc_auc_score(y_true, self.y_proba)
+        return round(a, 5)
 
-    def multi_recall(self):
-        '''
-        多类召回率的计算
-        '''
-        recalls = [self.binary_recall(label) for label in self.labels]
-        rec = Metric.mean(recalls)
-        return round(rec, 5)
+    def _gini(self, y_true, y_proba):
+        assert (len(y_true) == len(y_proba))
+        cat = np.asarray(np.c_[y_true, y_proba, np.arange(len(y_true))], dtype=np.float)
+        cat = cat[np.lexsort((cat[:, 2], -1 * cat[:, 1]))]  # 按照概率从大到小的顺序，如果相同则再按照索引
+        totalLoss = cat[:, 0].sum()
+        giniSum = cat[:, 0].cumsum().sum() / totalLoss
+        giniSum -= (len(y_true) + 1) / 2
+        return giniSum / len(y_true)
 
-    def multi_f_beta(self, beta=1.0):
-        '''
-        多类f_beta的计算
-        '''
-        f_betas = [self.binary_f_beta(beta, label) for label in self.labels]
-        f_beta = Metric.mean(f_betas)
-        return round(f_beta, 5)
+    def gini_norm(self):
+        return self._gini(self.y_true, self.y_proba.ravel()) / self._gini(self.y_true, self.y_true)
 
-    def get_binary_metrics(self, f_beta=1.0):
-        '''
-        得到二类的性能指标
-        '''
-        metrics = {"accuracy": self.accuracy(), "recall": self.binary_recall(),
-                   "precision": self.binary_precision(), "f_beta": self.binary_f_beta(f_beta)}
-        return metrics
+    def get_metrics(self):
+        if len(np.unique(self.y_true)) == 2:
+            metrics = {"accuracy": self.accuracy(), "precision": self.precision(),
+                       "recall": self.recall(), "f_score": self.f_score(),
+                       "auc": self.auc(), "gini_norm": self.gini_norm()}
+        else:
+            metrics = {"accuracy": self.accuracy(), "precision": self.precision(),
+                       "recall": self.recall(), "f_score": self.f_score(),
+                       "auc": self.auc()}
 
-    def get_multi_metrics(self, f_beta=1.0):
-        '''
-        得到多类的性能指标
-        '''
-        metrics = {"accuracy": self.accuracy(), "recall": self.multi_recall(),
-                   "precision": self.multi_precision(), "f_beta": self.multi_f_beta(f_beta)}
         return metrics

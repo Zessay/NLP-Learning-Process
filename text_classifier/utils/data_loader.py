@@ -17,7 +17,7 @@ class Dataset(object):
         self._dataSource = config['dataSource']
         self._stopWordSource = config['stopWordSource']
 
-        self._sequenceLength = config['sequenceLength']  # 设置序列的输入藏毒
+        self._sequenceLength = config['sequenceLength']  # 设置序列的输入长度
         self._embeddingSize = config['embeddingSize']
         self._batchSize = config['batch_size']
         self._trainRate = config['train_size']
@@ -94,45 +94,41 @@ class Dataset(object):
         target_word_dir = os.path.join(save_path, prefix + "_word2idx.json")
         target_label_dir = os.path.join(save_path, prefix + "_label2idx.json")
 
-        try:
-            word2idx = json.loads(target_word_dir)
-            label2idx = json.loads(target_label_dir)
-        
-        except:
-            allWords = [word for review in reviews for word in review]
-            # 去掉停用词
-            subWords = [word for word in allWords if word not in self.stopWordDict]
-            wordCount = Counter(subWords)  # 统计各个词的词频
-            sortWordCount = sorted(wordCount.items(), key=lambda x: x[1], reverse=True)
 
-            # 去除低频词
-            words = [item[0] for item in sortWordCount if item[1] >= 5]
+        allWords = [word for review in reviews for word in review]
+        # 去掉停用词
+        subWords = [word for word in allWords if word not in self._stopWordDict]
+        wordCount = Counter(subWords)  # 统计各个词的词频
+        sortWordCount = sorted(wordCount.items(), key=lambda x: x[1], reverse=True)
 
-            vocab, wordEmbedding = self._getWordEmbedding(words, path)
-            self.wordEmbedding = wordEmbedding
+        # 去除低频词
+        words = [item[0] for item in sortWordCount if item[1] >= 5]
 
-            # print(len(vocab), vocab[10])
-            word2idx = dict(zip(vocab, range(len(vocab))))
+        vocab, wordEmbedding = self._getWordEmbedding(words, path)
+        self.wordEmbedding = wordEmbedding
 
-            uniqueLabel = list(set(labels))
-            label2idx = dict(zip(uniqueLabel, list(range(len(uniqueLabel)))))
-            self.labelList = list(range(len(uniqueLabel)))
+        # print(len(vocab), vocab[10])
+        word2idx = dict(zip(vocab, range(len(vocab))))
 
-            # 将词汇表-索引映射表保存为json数据，之后inference时直接加载处理数据
-            
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            with open(target_word_dir, "w", encoding="utf8") as f:
-                json.dump(word2idx, f)
+        uniqueLabel = list(set(labels))
+        label2idx = dict(zip(uniqueLabel, list(range(len(uniqueLabel)))))
+        self.labelList = list(range(len(uniqueLabel)))
 
-            with open(target_label_dir, "w", encoding="utf8") as f:
-                json.dump(label2idx, f)
+        # 将词汇表-索引映射表保存为json数据，之后inference时直接加载处理数据
+
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        with open(target_word_dir, "w", encoding="utf8") as f:
+            json.dump(word2idx, f)
+
+        with open(target_label_dir, "w", encoding="utf8") as f:
+            json.dump(label2idx, f)
 
         return word2idx, label2idx
 
     def _getWordEmbedding(self, words, path):
         '''
-        按照数据集中的单词去除训练好的词向量
+        按照数据集中的单词取出训练好的词向量
         '''
         wordVec = gensim.models.KeyedVectors.load_word2vec_format(os.path.join(path, "wordvector.bin"),
                                                                   binary=True)
@@ -148,12 +144,13 @@ class Dataset(object):
         wordEmbedding.append(np.random.randn(self._embeddingSize))  # 对"UNK"用随机向量表示
 
         for word in words:
-            try:
-                vector = wordVec.wv[word]
-                vocab.append(word)
-                wordEmbedding.append(vector)
-            except:
-                pass
+            if word != "PAD" and word != "UNK":
+                try:
+                    vector = wordVec.wv[word]
+                    vocab.append(word)
+                    wordEmbedding.append(vector)
+                except:
+                    pass
 
         return vocab, np.array(wordEmbedding)
 
@@ -165,7 +162,7 @@ class Dataset(object):
             stopWords = f.read()
             stopWordList = stopWords.splitlines()
             # 转换成字典的形式，使用hash查找效率更高
-            self.stopWordDict = dict(zip(stopWordList, list(range(len(stopWordList)))))
+            self._stopWordDict = dict(zip(stopWordList, list(range(len(stopWordList)))))
 
     def dataGen(self, path, prefix=""):
         '''
