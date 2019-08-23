@@ -1,4 +1,4 @@
 # 忽略ipynb生成的文件
 
-text_classifier/.ipynb_checkpoints/
+/text_classifier/.ipynb_checkpoints/
 
