@@ -1,0 +1,8 @@
+# 忽略ipynb生成的文件
+
+.ipynb_checkpoints/
+
+utils/__pycache__/
+
+utils/.idea/
+
