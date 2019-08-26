@@ -66,8 +66,17 @@
 
 论文：[Multilingual Hierarchical Attention Networks for Document Classification](https://arxiv.org/pdf/1707.00896.pdf)
 
-&emsp;论文发表于2017年。由于传统的RNN网络的记忆能力优先，很难捕捉长距离的依赖。于是，本文提出了**用于分类的分层注意力网络**，采用层叠式的RNN，对文本的句子级别进行encoder，引入注意力机制，解决长句子的依赖问题。HAN包含三层，分别是**词汇层、句子层和输出层**，其中词汇曾和句子曾都包含一层Encoder和一层Attention层。在词汇层，HAN将文本分为$K$个句子，每个句子的长度为$T$，然后基于单词使用双向GRU进行Encoder，并使用Attention，得到句向量；在句子层，同样使用双向GRU进行Encoder，并使用Attention关注不同句子的贡献度，得到文本向量。最后，将文本向量用于输出层进行分类。
+&emsp;论文发表于2017年。由于传统的RNN网络的记忆能力优先，很难捕捉长距离的依赖。于是，本文提出了**用于分类的分层注意力网络**，采用层叠式的RNN，对文本的句子级别进行encoder，引入注意力机制，解决长句子的依赖问题。HAN包含三层，分别是**词汇层、句子层和输出层**，其中词汇曾和句子曾都包含一层Encoder和一层Attention层。在词汇层，HAN将文本分为`$K$`个句子，每个句子的长度为`$T$`，然后基于单词使用双向GRU进行Encoder，并使用Attention，得到句向量；在句子层，同样使用双向GRU进行Encoder，并使用Attention关注不同句子的贡献度，得到文本向量。最后，将文本向量用于输出层进行分类。
 
 &emsp;此外，为了应对多语言训练容易出现参数量过大的问题，本文提出通过Encoder层和Attention层的参数共享，并且使用多标签训练的参数避免参数量过大的问题。为了避免在训练过程中，对某种语言存在偏向，在每个batch_size中进行采样，每种语言的采样数量的`batch_size / M`，这里`M`表示语言类别数。
 
-![HAN](http://ww1.sinaimg.cn/large/006Ejijoly1g69tw798nmj30f00c83za.jpg)
+<div align=center><img width="500" height="400" src="http://ww1.sinaimg.cn/large/006Ejijoly1g69tw798nmj30f00c83za.jpg"/></div>
+
+> <font size=3 color=red>**DPCNN**</font>
+
+论文：[Deep Pyramid Convolution Neurail Networks for Text Categorization](https://ai.tencent.com/ailab/media/publications/ACL3-Brady.pdf)
+
+&emsp;论文发表于2017年。许多实验表明，浅层的CNN网络在文本分类中已经能够得到比较好的效果，这主要是因为深层CNN容易出现梯度消失的情况，并且由于feature map数量的增加，计算复杂度也会随之增加。本文提出了一种在不增加复杂度的前提下，能够得到更高分类精度的深层CNN网络。首先使用传统的word-embedding得到每个词的向量，然后使用[region embedding](http://riejohnson.com/paper/cnn-semi-nips15.pdf)得到区域文本向量（也就是采用固定核大小的卷积层）；紧接着使用堆叠的卷积块，买两个卷积之后进行一个shortcut，卷积块的最前面采用`size=3, strides=2`的池化层，减小计算复杂度。由于经过一层层赤化之后，文本的长度不断减小，但是通道数保持不变，所以称为`Pyramid`。文章采用了一些技巧，比如`pre-activation`以及固定滤波器的数量，这样保证了准确率，同时减小了复杂度。
+
+
+<div align=center><img width="400" height="500" src="http://ww1.sinaimg.cn/large/006Ejijoly1g6dffxlhg1j30gc0jeac6.jpg"/></div>
