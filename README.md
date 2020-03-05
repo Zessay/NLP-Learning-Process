@@ -10,4 +10,10 @@
 
 :wink: &emsp;&emsp;主要分为4种类型的任务，分别是**Ad-hoc Information Retrieval，Paraphrase Identification，Question Answering，Natural Language Infernence**。
 
+
+# <font size=3>3. 命名实体识别任务</font>
+
+:wink: &emsp;&emsp;包括BiLSTM，CRF，HMM，BiLSTM+CRF，以及Bert+Softmax，Bert+CRF，Bert+Span。使用两个数据集，数据集及代码参考[lonePatient](https://github.com/lonePatient/BERT-NER-Pytorch)。
+
+
 :cn: :cn:  持续更新…… :cn: :cn:
